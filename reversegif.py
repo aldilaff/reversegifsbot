@@ -7,14 +7,23 @@ from config import *
 from imgurpython import ImgurClient
 from os import remove
 import praw
-
+import time
+import requests
+import json
 
 
 def reverseGif(gifUrl):
+	request = requests.get(gifUrl)
+	chunk_size = 10
+	with open('gif.gif', 'wb') as fd:
+		for chunk in request.iter_content(chunk_size):
+			fd.write(chunk)
 	client = ImgurClient(imgur_client_id, imgur_client_secret)
-	gifToBeReversed = gifUrl #can be either gif or url to a gif
+	gifToBeReversed = 'gif.gif' #can be either gif or url to a gif
 	reversedGifFileName = 'reversed.gif'
+	print('getting gif')
 	clip = VideoFileClip(gifToBeReversed)
+	print('reversing gif')
 	clip = clip.fx(time_mirror)
 	clip.write_gif(reversedGifFileName)
 	print("Uploading image... ")
@@ -22,16 +31,38 @@ def reverseGif(gifUrl):
 	print("Done")
 	print()
 	print("Image was posted! Go check your images you sexy beast!")
-	print(imageURL)
 	print("You can find it here: {0}".format(imageURL['link']))
-	print("Deleting gif")
+	print("Deleting gifs")
+	remove('gif.gif')
 	remove(reversedGifFileName)
 	print("gif deleted")
+	return imageURL['link']
 
 def main():
     r = praw.Reddit(user_agent='Reverse gif bot by /u/aldilaff')
     r.login(reddit_username, reddit_password)
 	# r.send_message('aldilaff', 'Test1', 'You are awesome!')
-    reverseGif('http://i.imgur.com/Z5mi7mI.gif')
+    # print('calling reverseGif')
+    # reverseGif('http://i.imgur.com/Duqccay.gif')
+    while True:
+	    for msg in r.get_unread(limit=None):
+	    	# if msg.is_root:
+	    	# 	print('comment is a root')
+	    	time.sleep(2)
+	    	print('Message: %s' % msg)
+	    	print('Message link: %s' % msg.permalink)
+	    	time.sleep(2)
+	    	submission = r.get_submission(msg.permalink)
+	    	print(submission.url)
+	    	reversedGifUrl = reverseGif(submission.url)
+	    	time.sleep(2)
+	    	msg.reply('reversed %s' % reversedGifUrl) #reply to comment
+	    	print('Replied to message')
+	    	time.sleep(2)
+	    	msg.mark_as_read()
+	    	print('Marked message as read')
+	    #reverseGif('http://i.imgur.com/Z5mi7mI.gif')
+	    print('Sleeping for 3 seconds...')
+	    time.sleep(3)
 if __name__ == "__main__":
     main()
